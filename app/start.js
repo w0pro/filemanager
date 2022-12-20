@@ -6,7 +6,11 @@ import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import {readdir} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
-import {createWriteStream} from 'node:fs'
+import {createWriteStream} from 'node:fs';
+import {createHash} from 'crypto';
+import { createGzip } from 'node:zlib'
+import { pipeline } from 'node:stream'
+
 
 const arrArgv = process.argv
 let name = '';
@@ -23,8 +27,8 @@ const args = () => {
         }
     })
     actualDir = homeDir
-    console.log(`Welcome to the File Manager, ${name}`)
-    console.log(actualDir)
+    console.log(`Welcome to the File Manager, ${name}\n`)
+    console.log(`${actualDir}\n`)
 
 }
 args();
@@ -41,7 +45,7 @@ const fileMethods = {
         } else {
            throw Error('Path not exist')
         }
-
+        return 'Operation complete!\n'
     },
     ls: async () => {
         const arrFile = [];
@@ -54,11 +58,11 @@ const fileMethods = {
                 arrFile.push({name: file, value: 'File'})
             }
         }
-        arrDirectory.sort((a, b) => a.name > b.name ? 1 : -1)
-        arrFile.sort((a, b) => a.name > b.name ? 1 : -1)
+        arrDirectory.sort((a, b) => a.name > b.name ? 1 : -1);
+        arrFile.sort((a, b) => a.name > b.name ? 1 : -1);
 
-
-        console.table(arrDirectory.concat(arrFile))
+        console.table(arrDirectory.concat(arrFile));
+        return 'Operation complete!\n'
     },
     up: async () => {
         if (actualDir === homeDir) {
@@ -68,13 +72,15 @@ const fileMethods = {
             if (existsSync(dirs)) {
                 actualDir = dirs
             }
-
+            return 'Operation complete!\n'
         }
+
     },
     cat: async (param) => {
         if (existsSync(`${actualDir}${sep}${param[0]}`)) {
             const read = createReadStream(`${actualDir}${sep}${param[0]}`)
-            read.pipe(output)
+            read.pipe(output);
+            return 'Operation complete!\n'
         } else {
             throw new Error('File not exit')
         }
@@ -83,14 +89,18 @@ const fileMethods = {
         if (existsSync(`${actualDir}${sep}${param[0]}`)) {
             throw new Error('File exist!')
         } else {
-
+            await fs.writeFile(`${actualDir}${sep}${param[0]}`, ``);
+            return 'Operation complete!\n'
         }
     },
     rn: async (param) => {
         if (!existsSync(`${actualDir}${sep}${param[0]}`) || existsSync(`${actualDir}${sep}${param[1]}`)) {
             throw new Error('FS operation failed')
+        } else {
+            fs.rename(`${actualDir}${sep}${param[0]}`, `${actualDir}${sep}${param[1]}`);
+            return 'Operation complete!\n'
         }
-        fs.rename(`${actualDir}${sep}${param[0]}`, `${actualDir}${sep}${param[1]}`);
+
     },
     cp:async (param) => {
         if (!existsSync(`${actualDir}${sep}${param[0]}`)) {
@@ -100,10 +110,45 @@ const fileMethods = {
             if (!existsSync(`${actualDir}${sep}${param[1]}`)) {
                 await fs.writeFile(`${actualDir}${sep}${param[1]}`, ``);
             }
-            const write = createWriteStream( `${actualDir}${sep}${param[1]}`)
-            read.pipe(write)
+            const write = createWriteStream( `${actualDir}${sep}${param[1]}`);
+
+            read.pipe(write);
+            return 'Operation complete!\n'
+
         }
 
+    },
+    os: async (param) => {
+        if (param[0] === '--EOL') {
+            let a = os.EOL
+            console.log(a)
+        } else if (param[0] === '--cpus'){
+            console.log(os.cpus())
+        }else if (param[0] === '--homedir'){
+            console.log(os.homedir())
+        }else if (param[0] === '--username'){
+            console.log(os.userInfo().username)
+        }
+        else if (param[0] === '--architecture'){
+            console.log(os.arch())
+        }
+        return 'Operation complete!\n'
+    },
+    hash: async (param) => {
+        const textFile = await fs.readFile(`${actualDir}${sep}${param[0]}`, 'utf8');
+        const hash =  await createHash('sha256').update(textFile).digest('hex');
+        console.log(hash);
+        return 'Operation complete!\n'
+
+    },
+    compress: async (param) => {
+        const gzip = createGzip();
+        const source = createReadStream(`${actualDir}${sep}${param[0]}`);
+        const destination = createWriteStream(`${actualDir}${sep}${param[1]}`);
+
+        pipeline(source, gzip, destination, (err) => {
+                process.exitCode = 1;
+        });
     }
 }
 
@@ -117,14 +162,11 @@ rl.on('line', (input) => {
    if (fileMethods[command]) {
        fileMethods[command](arrInp.slice(1))
            .then(res => {
-                   console.log('Operation complete!')
-                   console.log(actualDir)
-
-
+                   console.log(res)
            })
            .catch(er => console.log(er.message))
    } else {
-       console.log('Invalid input')
+       console.log('Invalid input\n')
    }
 
 
@@ -135,5 +177,5 @@ rl.on('line', (input) => {
 
 rl.on('close', () => {
     console.log(`Thank you for using File Manager, ${name}, goodbye!
-`)
+\n`)
 })
