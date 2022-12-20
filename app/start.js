@@ -5,7 +5,8 @@ import * as os from 'os';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import {readdir} from 'node:fs/promises';
-import {createReadStream} from 'node:fs'
+import {createReadStream} from 'node:fs';
+import {createWriteStream} from 'node:fs'
 
 const arrArgv = process.argv
 let name = '';
@@ -82,15 +83,27 @@ const fileMethods = {
         if (existsSync(`${actualDir}${sep}${param[0]}`)) {
             throw new Error('File exist!')
         } else {
-            await fs.writeFile(`${actualDir}${sep}${param[0]}`, `${param[1]}`);
+
         }
     },
     rn: async (param) => {
         if (!existsSync(`${actualDir}${sep}${param[0]}`) || existsSync(`${actualDir}${sep}${param[1]}`)) {
             throw new Error('FS operation failed')
         }
-
         fs.rename(`${actualDir}${sep}${param[0]}`, `${actualDir}${sep}${param[1]}`);
+    },
+    cp:async (param) => {
+        if (!existsSync(`${actualDir}${sep}${param[0]}`)) {
+            throw new Error('FS operation failed')
+        } else {
+            const read = await createReadStream( `${actualDir}${sep}${param[0]}`);
+            if (!existsSync(`${actualDir}${sep}${param[1]}`)) {
+                await fs.writeFile(`${actualDir}${sep}${param[1]}`, ``);
+            }
+            const write = createWriteStream( `${actualDir}${sep}${param[1]}`)
+            read.pipe(write)
+        }
+
     }
 }
 
@@ -104,7 +117,6 @@ rl.on('line', (input) => {
    if (fileMethods[command]) {
        fileMethods[command](arrInp.slice(1))
            .then(res => {
-
                    console.log('Operation complete!')
                    console.log(actualDir)
 
