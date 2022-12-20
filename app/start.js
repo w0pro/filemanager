@@ -10,6 +10,7 @@ import {createWriteStream} from 'node:fs';
 import {createHash} from 'crypto';
 import { createGzip } from 'node:zlib'
 import { pipeline } from 'node:stream'
+import zlib from 'zlib'
 
 
 const arrArgv = process.argv
@@ -142,16 +143,41 @@ const fileMethods = {
 
     },
     compress: async (param) => {
-        const gzip = createGzip();
-        const source = createReadStream(`${actualDir}${sep}${param[0]}`);
-        const destination = createWriteStream(`${actualDir}${sep}${param[1]}`);
+        if (existsSync(`${actualDir}${sep}${param[1]}`)) {
+            throw new Error('archive exist')
+        } else if (!existsSync(`${actualDir}${sep}${param[0]}`)){
+            throw new Error('file not found')
+        }else {
+            const gzip = createGzip();
+            const source = createReadStream(`${actualDir}${sep}${param[0]}`);
+            const destination = createWriteStream(`${actualDir}${sep}${param[1]}`);
+            pipeline(source, gzip, destination, (err) => {
+               if (err){
+                   return err
+               }
+           })
+            return 'Operation complete!\n'
 
-        pipeline(source, gzip, destination, (err) => {
+        }
+    },
+    decompress: async (param) => {
+        if (existsSync(`${actualDir}${sep}${param[1]}`)) {
+            throw new Error('archive exist')
+        } else if (!existsSync(`${actualDir}${sep}${param[0]}`)){
+            throw new Error('file not found')
+        }else {
+            const source = createReadStream(`${actualDir}${sep}${param[0]}`);
+            const destination = createWriteStream(`${actualDir}${sep}${param[1]}`);
+
+            const unZip = zlib.createGunzip();
+            pipeline(source, unZip, destination, (err) => {
                 if (err) {
                     return err
                 }
+            });
             return 'Operation complete!\n'
-        });
+
+        }
     }
 }
 
@@ -171,10 +197,6 @@ rl.on('line', (input) => {
    } else {
        console.log('Invalid input\n')
    }
-
-
-
-
 
 });
 
