@@ -147,7 +147,10 @@ const fileMethods = {
         const destination = createWriteStream(`${actualDir}${sep}${param[1]}`);
 
         pipeline(source, gzip, destination, (err) => {
-                process.exitCode = 1;
+                if (err) {
+                    return err
+                }
+            return 'Operation complete!\n'
         });
     }
 }
